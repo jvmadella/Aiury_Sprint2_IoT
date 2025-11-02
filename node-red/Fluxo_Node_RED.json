@@ -1,0 +1,197 @@
+[
+    {
+        "id": "d586a45201075302",
+        "type": "tab",
+        "label": "Fluxo 11",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "90c5d4238ddb2a5f",
+        "type": "inject",
+        "z": "d586a45201075302",
+        "name": "Gerar Mensagem Aleatória",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 430,
+        "y": 480,
+        "wires": [
+            [
+                "1678850da770b6bc"
+            ]
+        ]
+    },
+    {
+        "id": "1678850da770b6bc",
+        "type": "function",
+        "z": "d586a45201075302",
+        "name": "Selecionar Mensagem Aleatória",
+        "func": "// Lista de mensagens de teste com diferentes riscos\nvar mensagens = [\n    { user_id: \"anon_001\", message: \"Hoje estou tranquilo\" },           // risco baixo\n    { user_id: \"anon_002\", message: \"Estou ansioso e com medo\" },       // risco médio\n    { user_id: \"anon_003\", message: \"Quero me matar, estou desesperado\" } // risco alto\n];\n\n// Escolhe aleatoriamente uma mensagem\nvar indice = Math.floor(Math.random() * mensagens.length);\nmsg.payload = mensagens[indice];\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 730,
+        "y": 480,
+        "wires": [
+            [
+                "70c9d3d487da19aa"
+            ]
+        ]
+    },
+    {
+        "id": "70c9d3d487da19aa",
+        "type": "function",
+        "z": "d586a45201075302",
+        "name": "Classificar Risco",
+        "func": "var msgData = msg.payload;\nvar text = (msgData.message || '').toLowerCase();\nvar risk = 'baixo';\n\nif (text.includes('suicidio') || text.includes('matar') || text.includes('ferir')) {\n    risk = 'alto';\n} else if (text.includes('medo') || text.includes('ansioso') || text.includes('violencia')) {\n    risk = 'médio';\n}\n\nmsg.payload.risk = risk;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1020,
+        "y": 480,
+        "wires": [
+            [
+                "cb58af87a8125a6d"
+            ]
+        ]
+    },
+    {
+        "id": "cb58af87a8125a6d",
+        "type": "function",
+        "z": "d586a45201075302",
+        "name": "Resposta automática",
+        "func": "var msgData = msg.payload;\nvar risk = msgData.risk.toLowerCase();\nvar response = '';\n\nswitch(risk) {\n    case 'baixo':\n        response = 'Recebemos sua mensagem. Continue acompanhando sua situação e lembre-se de práticas de bem-estar diário.';\n        break;\n    case 'médio':\n        response = 'Percebemos que você está passando por um momento de estresse. Procure apoio de amigos, familiares ou recursos próximos de saúde mental.';\n        break;\n    case 'alto':\n        response = 'Atenção! Identificamos um risco grave. Por favor, entre em contato imediatamente com um serviço de emergência ou suporte psicológico disponível em sua região.';\n        break;\n}\n\n// Coordenadas fictícias distintas para cada usuário\nvar coordenadas = {\n    \"anon_001\": { lat: -23.550520, lon: -46.633308 },\n    \"anon_002\": { lat: -23.551200, lon: -46.634500 },\n    \"anon_003\": { lat: -23.552800, lon: -46.635700 }\n};\n\nvar latitude = coordenadas[msgData.user_id]?.lat || -23.550520;\nvar longitude = coordenadas[msgData.user_id]?.lon || -46.633308;\n\n// Payload final para envio ao APEX\nmsg.payload = {\n    \"USER_ID\": msgData.user_id,\n    \"MESSAGE\": msgData.message,\n    \"RISK\": risk,\n    \"RESPONSE\": response,\n    \"lat\": latitude,\n    \"lng\": longitude,\n    \"created_at\": new Date().toISOString()   // <== corrigido para a coluna do banco\n};\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1270,
+        "y": 480,
+        "wires": [
+            [
+                "199826739fe29cf7",
+                "6002109d9095304b",
+                "7abdaff4460c2247"
+            ]
+        ]
+    },
+    {
+        "id": "199826739fe29cf7",
+        "type": "http request",
+        "z": "d586a45201075302",
+        "name": "Enviar para APEX",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://g0f5b9fa9011b0e-alertsdb.adb.sa-saopaulo-1.oraclecloudapps.com/ords/alertsworkspace/alerts/",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "other",
+                "keyValue": "",
+                "valueType": "other",
+                "valueValue": ""
+            }
+        ],
+        "x": 1580,
+        "y": 460,
+        "wires": [
+            [
+                "8fbae9f7f99dbefc"
+            ]
+        ]
+    },
+    {
+        "id": "6002109d9095304b",
+        "type": "mqtt out",
+        "z": "d586a45201075302",
+        "name": "MQTT Alerta + Resposta",
+        "topic": "app/alerts/response",
+        "qos": "0",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_broker",
+        "x": 1580,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "7abdaff4460c2247",
+        "type": "debug",
+        "z": "d586a45201075302",
+        "name": "Debug MQTT Resposta",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1580,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "8fbae9f7f99dbefc",
+        "type": "debug",
+        "z": "d586a45201075302",
+        "name": "Debug APEX",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "x": 1790,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "mqtt_broker",
+        "type": "mqtt-broker",
+        "name": "Local Mosquitto",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": true,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": ""
+    }
+]
